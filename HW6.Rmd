@@ -1,0 +1,168 @@
+---
+title: "HW6"
+author: "Yigao Li"
+date: "March 24, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 5.4 - 8
+
+## (a)
+
+```{r}
+library(boot)
+set.seed(1)
+x <- rnorm(100)
+y <- x - 2*x^2 + rnorm(100)
+```
+
+$n=100$, $p=2$. $y=x-2x^2+\epsilon$.
+
+## (b)
+
+```{r}
+plot(x,y)
+```
+
+Scatterplot is a bell shape, quadratic plot.
+
+## (c)
+
+```{r}
+simulated.data <- data.frame(x,y)
+model.1 <- glm(y ~ x, data = simulated.data)
+loocv.1 <- cv.glm(simulated.data, model.1)
+loocv.1$delta
+model.2 <- glm(y ~ poly(x,2), data = simulated.data)
+loocv.2 <- cv.glm(simulated.data, model.2)
+loocv.2$delta
+model.3 <- glm(y ~ poly(x,3), data = simulated.data)
+loocv.3 <- cv.glm(simulated.data, model.3)
+loocv.3$delta
+model.4 <- glm(y ~ poly(x,4), data = simulated.data)
+loocv.4 <- cv.glm(simulated.data, model.4)
+loocv.4$delta
+```
+
+## (d)
+
+```{r}
+set.seed(6)
+x.re <- rnorm(100)
+y.re <- x.re - 2*x.re^2 + rnorm(100)
+simulated.data.re <- data.frame(x.re,y.re)
+model.1.re <- glm(y.re ~ x.re, data = simulated.data.re)
+loocv.1.re <- cv.glm(simulated.data.re, model.1.re)
+loocv.1.re$delta
+model.2.re <- glm(y.re ~ poly(x.re,2), data = simulated.data.re)
+loocv.2.re <- cv.glm(simulated.data.re, model.2.re)
+loocv.2.re$delta
+model.3.re <- glm(y.re ~ poly(x.re,3), data = simulated.data.re)
+loocv.3.re <- cv.glm(simulated.data.re, model.3.re)
+loocv.3.re$delta
+model.4.re <- glm(y.re ~ poly(x.re,4), data = simulated.data.re)
+loocv.4.re <- cv.glm(simulated.data.re, model.4.re)
+loocv.4.re$delta
+```
+
+The results are the same because LOOCV has low bias.
+
+## (e)
+
+As expected, Model ii has the smallest LOOCV error because our true model is a quadratic function.
+
+## (f)
+
+```{r}
+summary(model.1)
+summary(model.2)
+summary(model.3)
+summary(model.4)
+```
+
+Except the linear model, the other 3 models have statistically significant coefficients of $x$ and $x^2$, which agrees with conclusions from cross-validation results.
+
+# 6.8 - 1
+
+## (a)
+
+Best subset
+
+## (b)
+
+Best subset
+
+## (c)
+
+i. True
+
+ii. True
+
+iii. False
+
+iv. False
+
+v. False
+
+# 6.8 - 2
+
+## (a)
+
+iii. is correct because LASSO takes penalty into consideration. Model flexibility decreases, and shrinkage of LASSO coefficient leads to decrease in variance and increase in bias.
+
+## (b)
+
+iii. is correct. Same reason with above.
+
+# 6.8 - 9
+
+## (a)
+
+```{r}
+library(ISLR)
+library(glmnet)
+college <- College
+Split <- floor(dim(college[1])*0.5)
+train <- 1:Split
+test <- (Split+1):dim(college)[1]
+college.train <- college[train,]
+college.test <- college[test,]
+```
+
+## (b)
+
+```{r}
+model.5 <- lm(Apps ~ ., data = college.train)
+pred.5 <- predict(model.5, college.test)
+mean((college.test$Apps - pred.5)^2)
+```
+
+## (c)
+
+```{r}
+xtrain.matrix <- model.matrix(Apps ~ ., data = college.train)
+xtest.matrix <- model.matrix(Apps ~ ., data = college.test)
+y <- college.train$Apps
+ridge.fit <- glmnet(xtrain.matrix, y, alpha = 0)
+ridge.cv <- cv.glmnet(xtrain.matrix, y, alpha = 0)
+best.lambda.ridge <- ridge.cv$lambda.min
+pred.ridge <- predict(ridge.fit, s = best.lambda.ridge, newx = xtest.matrix)
+mean((college.test$Apps - pred.ridge)^2)
+```
+
+## (d)
+
+```{r}
+lasso.fit <- glmnet(xtrain.matrix, y, alpha = 1)
+lasso.cv <- cv.glmnet(xtrain.matrix, y, alpha = 1)
+best.lambda.lasso <- lasso.cv$lambda.min
+pred.lasso <- predict(lasso.fit, s = best.lambda.lasso, newx = xtest.matrix)
+mean((college.test$Apps - pred.lasso)^2)
+coef(lasso.cv, s = best.lambda.lasso)
+```

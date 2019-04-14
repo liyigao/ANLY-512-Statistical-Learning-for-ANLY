@@ -1,0 +1,288 @@
+---
+title: "Take Home Final"
+author: "Yigao Li"
+date: "May 3, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part A: Ozone Data
+
+## Preparation
+
+```{r}
+library(mlbench)
+library(tree)
+library(boot)
+library(glmnet)
+data(Ozone)
+ozone <- Ozone
+ozone <- ozone[,-c(2,3)]
+colnames(ozone) <- c("month", "dailymax", "pressure", "windlax", "humlax", "tsand", "telmonte",
+                     "invlax", "pressgrad", "invbasetemplax", "vislax")
+ozone.clean <- na.omit(ozone)
+ozone.dailymax <- ozone[!is.na(ozone$dailymax),]
+```
+
+## A.1
+
+```{r}
+month.table <- table(ozone.clean$month)
+miss.month <- c(31,29,31,30,31,30,31,31,30,31,30,31) - month.table
+chisq.test(miss.month)
+```
+
+Convert the month column to a contigency table. The data has 366 rows, which means that February has 29 days this year. By subtracting the total number of days in a month by its corresponding days in contigency table, we get the number of missing days in the data. Then use built-in `chisq.test` to test our hypothesis. The null hypothesis is that the days with missing data are uniformly distributed and alternative hypothesis is that the number of missing days in at least one month is different from other months. The $\chi^2$ test statistics is 9.638 with degrees of freedom 11. The p-value is 0.5632, which is larger than $5\%$. We fail to reject our null hypothesis. Therefore, the days with missing data are uniformly distributed.
+
+## A.2
+
+```{r}
+tree.clean <- tree(dailymax ~ . - month, data = ozone.clean)
+plot(tree.clean)
+text(tree.clean)
+title("Decision tree from data with complete observations")
+tree.dailymax <- tree(dailymax ~ . - month, data = ozone.dailymax)
+plot(tree.dailymax)
+text(tree.dailymax)
+title("Decision tree from data with complete daily maximum observations")
+```
+
+According to the instruction of the package `tree`, function `tree` takes parameter `na.action` equals to `na.pass` by default, which means "to do nothing ... by dropping them down the tree as far as possible" (tree, 14). Therefore, when applying to data with missing values, it passes through these `na`s.
+
+## A.3
+
+```{r}
+set.seed(6007)
+n <- dim(ozone.dailymax)[1]
+nfold <- 10
+fold.index <- sample(rep(1:nfold, length.out = n))
+se <- 0
+for (i in 1:nfold){
+  test <- which(fold.index == i)
+  train <- -test
+  train.data <- ozone.dailymax[train,]
+  test.data <- ozone.dailymax[test,]
+  month.mean <- c()
+  for (j in 1:12){
+    month.mean[j] <- mean(train.data$dailymax[train.data$month == j])
+  }
+  se <- se + sum((test.data$dailymax - month.mean[test.data$month])^2)
+}
+sqrt(se/n)
+```
+
+I wrote my own code for cross-validation. The dataset I chose was the complete daily maximum observations. I got errors of all 361 observations through 10-fold CV and then calculate root mean square error of all. The RMS error is 6.3997.
+
+## A.4
+
+```{r}
+set.seed(7758)
+ozone.linear <- glm(dailymax ~ . - month, data = ozone.clean)
+summary(ozone.linear)
+cv.1 <- cv.glm(data = ozone.clean, glmfit = ozone.linear, K = 10)
+sqrt(cv.1$delta[1])
+```
+
+The dataset is the one with complete observations. Using `glm` to build linear model to predict daily ozone maximum from all other variables except `month`, and then apply `cv.glm` to do 10-fold CV and find mean square error `delta` from `cv.glm` output. Significant variables are `humlax`, `tsand`, `telmonte` and `invlax`. Root mean square error can be calculated by taking square root of MSE. The RMS error is 4.589724.
+
+## A.5
+
+```{r}
+X <- model.matrix(dailymax ~ . - month, data = ozone.clean)
+ozone.unscale.lasso <- glmnet(X, ozone.clean$dailymax, alpha = 1, standardize = FALSE)
+plot(ozone.unscale.lasso, xvar = "lambda",
+     main = "LASSO coefficients as a function of lambda without standardization")
+ozone.unscale.lasso$beta[,36:59]
+```
+
+The plot of the coefficient trajectories as a function of the regularization parameter $\lambda$ with nonstandardized data is shown above. From the matrix of coefficients given by `glmnet()$beta`, the last five variables that leave the model as $\lambda$ increases are `invlax`, `pressure`, `vislax`, `pressgrad` and `humlax`.
+
+```{r}
+ozone.scale.lasso <- glmnet(X, ozone.clean$dailymax, alpha = 1, standardize = TRUE)
+plot(ozone.scale.lasso, xvar = "lambda",
+     main = "LASSO coefficients as a function of lambda with standardization")
+ozone.scale.lasso$beta[,3:24]
+```
+
+Similarly, make the same kind of plot for scaled data. From the matrix of coefficients, the 5 most important variables are `tsand`, `telmonte`, `humlax`, `invlax` and `vislax`.
+
+## A.6
+
+| Model | pressure | windlax | humlax | tsand | telmonte | invlax | pressgrad | invbasetemplax | vislax |
+|-----------------|:--------:|:-------:|:------:|:-----:|:--------:|:------:|:---------:|:--------------:|:------:|
+| Decision Tree (**A.2**) |  |  |  | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ |
+| Linear (**A.4**) |  |  | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ |  |  |  |
+| LASSO (unscale) (**A.5**) | $\checkmark$ |  | $\checkmark$ |  |  | $\checkmark$ | $\checkmark$ |  | $\checkmark$ |
+| LASSO (scale) (**A.5**) |  |  | $\checkmark$ | $\checkmark$ | $\checkmark$ | $\checkmark$ |  |  | $\checkmark$ |
+
+The above table displays variables that decision tree, linear model and LASSO use. We can see that `invlax` is used in all models, and `humlax`, `tsand`, `telmonte` and `vislax` appear in most models. `windlax` does not appear in any model and `pressure` and `invbasetemplax` are only used in a few models.
+
+# Part B: Artificial Data
+
+## Preparation
+
+```{r}
+library(gbm)
+set.seed(2019)
+make.eight = function(N, spread = .1, makeplot = T){
+  # Make N points: N/2 points in horizontal figure 8
+  # N/4 points each inside the holes of the figure 8
+  # spread = noise parameter
+  # return data frame with coordinates x, y for each point
+  # Classification variables in the data frame:
+  # charlabel = eight or left or right
+  # label = 0 (for points on the figure 8) or = 1 (for points inside the holes)
+  # plot with marked points if makeplot = T
+  # Try these examples:
+  # mydf <- make.eight(200)
+  # mydf <- make.eight(100,spread = .05)
+  # mydf <- make.eight(300,spread = .1, makeplot = F)
+  circ0 = runif(N/2)*2*pi
+  circ = matrix(c(cos(circ0)/(1 + sin(circ0)^2),rep(-.5,N/4),rep(.5,N/4),
+  cos(circ0)*sin(circ0)/(1 + sin(circ0)^2),rep(0,N/2)),ncol = 2)
+  x = circ + spread*matrix(rnorm(2*N),N,2)
+  y=rep(c(0,1),c(N/2,N/2))
+  if(makeplot){plot(x,col = c(rep(1,N/2),rep(2,N/4),rep(3,N/4)),pch=19,
+  xlab = "x1", ylab = "x2")}
+  A = data.frame(x = x[,1], y = x[,2], label = as.factor(y),
+  charlabel = c(rep("eight",N/2),rep("left",N/4), rep("right",N/4)))
+  return(A)
+}
+eight.train <- make.eight(2000)
+eight.test <- make.eight(2000)
+```
+
+## B.1
+
+### (a)
+
+```{r}
+eight.tree <- tree(label ~ x + y, data = eight.train)
+plot(eight.tree)
+text(eight.tree)
+title("Decision tree of point labels in horizontal figure 8")
+pred.tree.train <- predict(eight.tree, newdata = eight.train, type = "class")
+table(eight.train$label, pred.tree.train)
+pred.tree.test <- predict(eight.tree, newdata = eight.test, type = "class")
+table(eight.test$label, pred.tree.test)
+```
+
+Training error is $6.2\%$ and testing error is $8.0\%$.
+
+### (b)
+
+```{r}
+eight.prune <- prune.tree(eight.tree, best = 7)
+plot(eight.prune)
+text(eight.prune)
+title("Pruned tree")
+pred.prune.train <- predict(eight.prune, newdata = eight.train, type = "class")
+table(eight.train$label, pred.prune.train)
+pred.prune.test <- predict(eight.prune, newdata = eight.test, type = "class")
+table(eight.test$label, pred.prune.test)
+```
+
+Original tree has 10 terminal nodes and there are 3 subtrees that return the same result for both branches. Therefore, pruned tree uses only 7 terminal nodes. After building the pruned tree and the confusion matrices of predictions.
+
+### (c)
+
+```{r}
+eight.fewer6 <- prune.tree(eight.tree)
+plot(eight.fewer6)
+title("Error vs. Tree size")
+```
+
+As tree size decreases, the error rate increases.
+
+## B.2
+
+### (a)
+
+```{r}
+eight.train$label <- as.numeric(eight.train$label)-1
+set.seed(2019)
+eight.boost <- gbm(label ~ x + y, distribution = "bernoulli", data = eight.train, n.trees = 20000,
+                   interaction.depth = 2, shrinkage = 0.01)
+pred.boost.train <- predict(eight.boost, eight.train, n.trees = 20000, response = "class")
+table(eight.train$label, pred.boost.train > 0.5)
+pred.boost.test <- predict(eight.boost, eight.test, n.trees = 20000, response = "class")
+table(eight.test$label, pred.boost.test > 0.5)
+```
+
+In the boosted model, training error rate is $1.00\%$ and test error rate is $7.75\%$. Prediction error cannot be lower than 1% because boosting training error converges. Since the number of trees is set to 20000 to achieve small training error, this large number of trees causes overfitting and significantly large prediction error in test data.
+
+### (b)
+
+```{r}
+set.seed(2019)
+eight.d3 <- gbm(label ~ x + y, distribution = "bernoulli", data = eight.train, n.trees = 1000,
+                interaction.depth = 8, shrinkage = 0.2)
+pred.d3.train <- predict(eight.d3, eight.train, n.trees = 1000, response = "class")
+table(eight.train$label, pred.d3.train > 0.5)
+pred.d3.test <- predict(eight.d3, eight.test, n.trees = 1000, response = "class")
+table(eight.test$label, pred.d3.test > 0.5)
+```
+
+In the boosted model with 4 splits in each tree, training error rate is 0 and test error rate is $7.15\%$. The model in part (b) is slightly better than that in part (a), but the improvement is not significant. Thus, neither of them should be used for new data because these models are overfitting.
+
+## B.3
+
+```{r}
+library(e1071)
+set.seed(2019)
+eightdense <- make.eight(1000, spread = 0.05)
+eightdense <- subset(eightdense, select = -label)
+```
+
+### (a)
+
+```{r}
+eight.dist <- dist(eightdense[,1:2], diag = TRUE, upper = TRUE)
+hc.complete <- hclust(eight.dist, method = "complete")
+hc.complete$height[980:999]
+plot(hc.complete, main = "Complete Linkage", xlab = "")
+abline(h = 0.74, col = "lightsteelblue")
+abline(h = 0.38, col = "slategray")
+hc.single <- hclust(eight.dist, method = "single")
+hc.single$height[980:999]
+plot(hc.single, main = "Single Linkage", xlab = "")
+abline(h = 0.0711, col = "lightsteelblue")
+abline(h = 0.0606, col = "slategray")
+complete.10 <- cutree(hc.complete, k = 10)
+table(eightdense$charlabel, complete.10)
+complete.20 <- cutree(hc.complete, k = 20)
+table(eightdense$charlabel, complete.20)
+single.10 <- cutree(hc.single, k = 10)
+table(eightdense$charlabel, single.10)
+single.20 <- cutree(hc.single, k = 20)
+table(eightdense$charlabel, single.20)
+```
+
+This dataset has 1000 points. 500 points labeled `eight`, 250 points labeled `left` and the rest 250 points are labeled `right`.
+
+Clustering result with complete linkage, cut at $k=10$, 249 `left` points are in cluster **2** and all 250 `right` points are in cluster **5**.
+
+Clustering result with complete linkage, cut at $k=20$, 248 `left` points are in cluster **19** and all 250 `right` points are in cluster **20**.
+
+Clustering result with single linkage, cut at $k=10$, 249 `left` points are in cluster **1** and all 250 `right` points are in cluster **10**.
+
+Clustering result with single linkage, cut at $k=20$, 249 `left` points are in cluster **1** and all 250 `right` points are in cluster **20**.
+
+### (b)
+
+```{r}
+set.seed(2019)
+sp <- .0419
+eightperfect <- make.eight(1000, spread = sp)
+eight.dist.p <- dist(eightperfect[,1:2], diag = TRUE, upper = TRUE)
+hc.single.p <- hclust(eight.dist.p, method = "single")
+single.3 <- cutree(hc.single.p, k = 3)
+table(eightperfect$charlabel, single.3)
+```
+
+After several trials, hierarchical clustering with single linkage can perfectly identify 3 clusters when data point spread is as small or smaller than 0.0419.

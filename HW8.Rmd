@@ -1,0 +1,215 @@
+---
+title: "HW8"
+author: "Yigao Li"
+date: "April 9, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 8.4 - 1
+
+```{r}
+plot(NA, NA, type = "n", xlim = c(0, 100), ylim = c(0, 100), xlab = "X", ylab = "Y")
+lines(x = c(80,80), y = c(0,100))
+lines(x = c(30,30), y = c(0,100))
+lines(x = c(30,80), y = c(80,80))
+lines(x = c(80,100), y = c(40,40))
+lines(x = c(90,90), y = c(40,100))
+text(x = 80, y = 10, labels = c("t1"))
+text(x = 30, y = 10, labels = c("t2"))
+text(x = 100, y = 40, labels = c("t3"))
+text(x = 40, y = 80, labels = c("t4"))
+text(x = 90, y = 60, labels = c("t5"))
+text(x = 15, y = 50, labels = c("R1"))
+text(x = 55, y = 90, labels = c("R2"))
+text(x = 55, y = 40, labels = c("R3"))
+text(x = 85, y = 70, labels = c("R4"))
+text(x = 95, y = 70, labels = c("R5"))
+text(x = 90, y = 20, labels = c("R6"))
+```
+
+![Decision Tree](D:/Courses/ANLY 512/hw8-1.png)
+
+# 8.4 - 4
+
+## (a)
+
+![Tree](D:/Courses/ANLY 512/hw8-4-a.png)
+
+## (b)
+
+```{r}
+plot(NA, NA, type = "n", xlim = c(-1,3), ylim = c(-1,3), xlab = "X", ylab = "Y")
+lines(x = c(-1,3), y = c(1,1))
+lines(x = c(1,1), y = c(-1,1))
+lines(x = c(-1,3), y = c(2,2))
+lines(x = c(0,0), y = c(1,2))
+text(x = 1, y = 2.5, labels = c("2.49"))
+text(x = -0.5, y = 1.5, labels = c("-1.06"))
+text(x = 1.5, y = 1.5, labels = c("0.21"))
+text(x = 0, y = 0, labels = c("-1.80"))
+text(x = 2, y = 0, labels = c("0.63"))
+```
+
+# 8.4 - 9
+
+## (a)
+
+```{r}
+library(ISLR)
+library(tree)
+oj <- OJ
+```
+
+```{r}
+set.seed(1)
+n <- dim(oj)[1]
+train <- sample(n, 800)
+oj.train <- oj[train,]
+oj.test <- oj[-train,]
+```
+
+## (b)
+
+```{r}
+oj.tree <- tree(Purchase ~ ., data = oj.train)
+summary(oj.tree)
+```
+
+Decision tree uses 4 predictors and 8 terminal nodes. Training error rate is $0.165$. 
+
+## (d)
+
+```{r}
+plot(oj.tree)
+text(oj.tree, pretty = 0)
+```
+
+Only "LoyalCH" predictor is considered in the first 2 levels. The bottom left nodes split by "LoyalCH" but get the same classification result.
+
+## (e)
+
+```{r}
+oj.pred <- predict(oj.tree, oj.test, type = "class")
+table(oj.test$Purchase, oj.pred)
+```
+
+The test error rate is $\frac{49+12}{147+12+49+62}\approx0.226$.
+
+## (f)
+
+```{r}
+oj.cv <- cv.tree(oj.tree)
+```
+
+## (g)
+
+```{r}
+plot(oj.cv, type = "b")
+```
+
+## (h)
+
+Tree size = 5
+
+## (i)
+
+```{r}
+oj.prune <- prune.tree(oj.tree, best = 5)
+plot(oj.prune)
+text(oj.prune)
+```
+
+## (j)
+
+```{r}
+summary(oj.prune)
+```
+
+Training error rate of unpruned tree is $0.165$.  
+Training error rate of pruned tree is $0.1825$, which is higher than that of unpruned tree.
+
+## (k)
+
+```{r}
+oj.prune.pred <- predict(oj.prune, oj.test, type = "class")
+table(oj.test$Purchase, oj.prune.pred)
+```
+
+Test error rate of unpruned tree is $0.226$.  
+Test error rate of pruned tree is $\frac{30+40}{270}\approx0.26$, which is also higher than that of unpruned tree.
+
+# 8.4 - 12
+
+```{r}
+load("mnist_all.RData")
+library(randomForest)
+index <- (train$y == 3 | train$y == 6)
+mnist <- train$x[index,]
+mnist.y <- train$y[index]
+mnist <- as.data.frame(mnist)
+n <- length(mnist)
+mnist.var <- c()
+for (i in c(1:n)){
+  mnist.var[i] <- var(mnist[,i])
+}
+var.df <- data.frame(c(1:n), mnist.var)
+var.df <- var.df[order(mnist.var, decreasing = TRUE),]
+head(var.df, 25)
+topvar.index <- c(544, 545, 543, 515, 573,
+                  352, 351, 572, 574, 629,
+                  628, 516, 186, 325, 630,
+                  631, 546, 353, 213, 487,
+                  548, 627, 180, 324, 632)
+mnist <- mnist[,topvar.index]
+mnist$y <- as.factor(mnist.y/3-1)    # 0 for number 3;  1 for number 6
+index.test <- (test$y == 3 | test$y == 6)
+mnist.test <- test$x[index.test,]
+mnist.test.y <- test$y[index.test]
+mnist.test <- as.data.frame(mnist.test)
+mnist.test <- mnist.test[,topvar.index]
+mnist.test$y <- as.factor(mnist.test.y/3-1)
+```
+
+## Bagging
+
+```{r}
+set.seed(2)
+bag.mnist <- randomForest(y ~ ., data = mnist, mtry = 25, importance = TRUE)
+bag.mnist
+bag.pred <- predict(bag.mnist, newdata = mnist.test)
+table(bag.pred, mnist.test$y)
+```
+
+Bagging test error rate is $\frac{24+22}{988+24+22+934}\approx0.023374$
+
+## Random Forest
+
+```{r}
+set.seed(3)
+rf.mnist <- randomForest(y ~ ., data = mnist, mtry = 5, importance = TRUE)
+rf.mnist
+rf.pred <- predict(rf.mnist, newdata = mnist.test)
+table(rf.pred, mnist.test$y)
+```
+
+Random forest test error rate is $\frac{19+26}{1968}\approx0.022866$
+
+## Comparing to Logistic Regression
+
+```{r}
+mnist.glm <- glm(y ~ .,data = mnist, family = binomial)
+glm.prob <- predict(mnist.glm, newdata = mnist.test, type = "response")
+glm.pred <- rep(0, length(glm.prob))
+glm.pred[glm.prob > 0.5] = 1
+table(glm.pred, mnist.test.y)
+```
+
+Logistic Regression test error rate is approximately $0.042$.
+
+Overall, both bagging and random forest methods perform better than logistic regression. Among all three methods, **random forest** gives the lowest test error rate of $2.2866\%$.

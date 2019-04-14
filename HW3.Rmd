@@ -1,0 +1,181 @@
+---
+title: "HW3"
+author: "Yigao Li"
+date: "February 9, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 3 - 3
+
+## (a)
+
+### i.
+
+False.
+
+$$Y(\text{Gender}=\text{male}|\text{IQ},\text{GPA})=...+0$$
+$$Y(\text{Gender}=\text{female}|\text{IQ},\text{GPA})=...+35-10\times \text{GPA}$$
+
+There is not enough information to tell whether males earn more on average than female.
+
+### ii.
+
+False.
+
+Same reason with i.
+
+### iii.
+
+True.
+
+When $\text{GPA}$ is high enough ($\text{GPA}>3.5$), $Y(\text{Gender}=\text{male}|\text{IQ},\text{GPA}>3.5)>Y(\text{Gender}=\text{female}|\text{IQ},\text{GPA}>3.5)$. Thus, males earn more on average than females provided that the GPA is high enough.
+
+### iv.
+
+False.
+
+Same reason with iv. Females earn less on average than males provided that the GPA is high enough.
+
+## (b)
+
+The regression equation is:  
+$$\hat Y=50+20\times \text{GPA}+0.07\times \text{IQ}+35\times \text{Gender}+0.01\times \text{GPA}\times \text{IQ}-10\times \text{GPA}\times \text{Gender}$$
+When $\text{IQ}=110$, $\text{GPA}=4.0$ and $\text{Gender}=1(\text{female})$, $\hat Y=137.1$. The estimated starting salary of a female with IQ of 110 and a GPA of 4.0 after graduation is 137.1 thousand dollars.
+
+## (c)
+
+False. Coefficient cannot indicate the effectiveness of a predictor.
+
+# 3 - 9
+
+## (e)
+
+```{r}
+library(ISLR)
+auto <- subset(Auto, select = -name)
+model.1 <- lm(mpg ~ .^2, data = auto)
+summary(model.1)
+```
+
+Among all interactive terms, "$\text{displacement}\times \text{year}$", "$\text{acceleration}\times \text{year}$" and "$\text{acceleration}\times \text{origin}$" are statistically significant.
+
+## (f)
+
+```{r}
+model.2 <- lm(mpg ~ log(cylinders) + log(displacement) + log(horsepower) + log(weight) + 
+                log(acceleration) + log(year) + log(origin), data = auto)
+summary(model.2)
+```
+
+There are 5 logarithm predictors that are statistically significant: "horsepower", "weight", "acceleration", "year" and "origin".
+
+```{r}
+model.3 <- lm(mpg ~ sqrt(cylinders) + sqrt(displacement) + sqrt(horsepower) + sqrt(weight) +
+                sqrt(acceleration) + sqrt(year) + sqrt(origin), data = auto)
+summary(model.3)
+```
+
+There are 4 square root predictors that are statistically significant: "horsepower", "weight", "year" and "origin".
+
+```{r}
+
+model.4 <- lm(as.formula(paste("mpg ~ ", paste("poly(", colnames(auto[-1]), ",2)", collapse = '+'))),
+              data = auto)
+summary(model.4)
+```
+
+The regression model with quadratic terms has 9 statistically significant terms: "horsepower", "$\text{horsepower}^2$", "weight", "$\text{weight}^2$", "acceleration", "$\text{acceleration}^2$", "year", "$\text{year}^2$" and "origin".
+
+Concluding from all previous results, quadratic transformation is the best regression because its multiple R-squared is the largest. Also, all forms of "cylinders" variable is not statistically significant in any regression.
+
+# 3 - 10
+
+## (a)
+
+```{r}
+carseats <- Carseats
+model.5 <- lm(Sales ~ Price + Urban + US, data = carseats)
+summary(model.5)
+```
+
+## (b)
+
+The regression is:
+
+$$\hat{\text{Sales}}=\hat\beta_0+\hat\beta_1\times\text{Price}+\hat\beta_2\times\text{Urban}+\hat\beta_3\times\text{US},$$
+$$\text{where Urban}=\begin{cases}1\text{ Yes}\\0\text{ No}\end{cases}\text{ and US}=\begin{cases}1\text{ Yes}\\0\text{ No}\end{cases}$$
+
+$\beta_0$: If company charges nothing for car seats at a rural store not in the US, the estimated sales at this location is 13.043469 thousand dollars.  
+$\beta_1$: In the same store, if company charges 1 dollar more for each car seat, sales at this location decreases $\$54.459$ on average.  
+$\beta_2$: For a fixed number of dollars company charges for car seats, sales at a US urban location is on average $\$21.916$ less than a US rural location.  
+$\beta_3$: For a fixed number of dollars company charges for car seats, sales at a US location is on average $\$1200.573$ more than a similar non-US location.
+
+## (c)
+
+Answered in part (b)
+
+## (d)
+
+"Price" and "US"
+
+## (e)
+
+```{r}
+model.6 <- lm(Sales ~ Price + US, data = carseats)
+summary(model.6)
+```
+
+## (f)
+
+All variables in (e) model are statistically significant. Generally speaking, model (e) does not improve much comparing to model (a). Coefficients slightly changed and multiple R-squared does not change.
+
+## (g)
+
+```{r}
+confint(model.6)
+```
+
+## (h)
+
+```{r}
+plot(model.6)
+carseats[377,]
+```
+
+Observation 377 is an outlier. It has the highest leverage in the model (e).
+
+# 3 - 14
+
+```{r}
+set.seed(1)
+x1 <- runif(100)
+x2 <- 0.5 * x1 + rnorm(100)/10
+y <- 2 + 2 * x1 + 0.3 * x2 + rnorm(100)
+```
+
+$$y=\beta_0+\beta_1x_1+\beta_2x_2$$
+$\beta_0=2$, $\beta_1=2$, $\beta_2=0.3$
+
+## (b)
+
+```{r}
+cor(x1, x2)
+plot(x1, x2)
+```
+
+## (c)
+
+```{r}
+model.7 <- lm(y ~ x1 + x2)
+summary(model.7)
+```
+
+$$\hat y=\hat\beta_0+\hat\beta_1x_1+\hat\beta_2x_2$$
+$\hat\beta_0=2.1305$, $\hat\beta_1=1.4396$, $\hat\beta_2=1.0097$  
+$\beta_0$ is approximately the same but the estimated $\beta_1$ is smaller than real $\beta_1$ and the estimated $\beta_2$ is larger than real $\beta_2$. From the model summary, we can reject null hypothesis for $\beta_1$ but not for $\beta_2$.

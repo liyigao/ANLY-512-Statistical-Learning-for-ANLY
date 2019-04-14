@@ -1,0 +1,148 @@
+---
+title: "HW4"
+author: "Yigao Li"
+date: "February 13, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 4 - 6
+
+## (a)
+
+$$\text{P\{Y=receive an A\}}=\frac{e^{\hat\beta_0+\hat\beta_1X_1+\hat\beta_2X_2}}{1+e^{\hat\beta_0+\hat\beta_1X_1+\hat\beta_2X_2}}=\frac{e^{-6+0.05X_1+X_2}}{1+e^{-6+0.05X_1+X_2}}$$
+$$\text{P}\{\text{Y|}X_1=40,X_2=3.5\}=\frac{e^{-6+0.05\times40+3.5}}{1+e^{-6+0.05\times40+3.5}}\approx0.37754$$
+
+## (b)
+
+$$\begin{aligned}
+0.5&=\frac{e^{-6+0.05X_1+3.5}}{1+e^{-6+0.05X_1+3.5}}\\
+X_1&=50
+\end{aligned}$$
+
+# 4 - 13
+
+```{r}
+library(MASS)
+boston <- Boston
+crim.median <- median(boston$crim)
+boston$crimclass <- as.numeric(boston$crim > crim.median)
+boston <- subset(boston, select = -crim)
+splt <- floor(dim(boston)[1]*0.75)
+train <- 1:splt
+test <- (splt+1):dim(boston)[1]
+boston.train <- boston[train,]
+boston.test <- boston[test,]
+crim.test <- boston$crimclass[test]
+model.1 <- glm(crimclass ~ ., data = boston, family = binomial, subset = train)
+summary(model.1)
+prob.1 <- predict(model.1, boston.test, type = "response")
+pred.1 <- rep(0, length(prob.1))
+pred.1[prob.1 > 0.5] = 1
+mean(pred.1 != crim.test)
+library(bestglm)
+boston.for.bestglm <- within(boston, {
+  y <- crimclass
+  crimclass <- NULL
+})
+res.bestglm <- bestglm(Xy = boston.for.bestglm, family = binomial, IC = "AIC", method = "exhaustive")
+summary(res.bestglm$BestModel)
+model.2 <- glm(crimclass ~ . - indus - chas - rm - lstat, data = boston, family = binomial,
+               subset = train)
+summary(model.2)
+prob.2 <- predict(model.2, boston.test, type = "response")
+pred.2 <- rep(0, length(prob.2))
+pred.2[prob.2 > 0.5] = 1
+mean(pred.2 != crim.test)
+```
+
+Create a new column called "crimclass". If crime rate is above the median, crimclass is 1, and 0 otherwise. 75% of dataset is training data and 25% is test dataset. The error rate when using all predictors is 7.874016%. Using "bestglm" package we find the best logistic regression model selected from all predictors. With 9 of the predictors, the new logistic regression model also have 7.874016% error rate.
+
+# MNIST
+
+## Problem 1
+
+```{r}
+load("mnist_all.RData")
+library(pROC)
+```
+
+```{r}
+index <- (train$y == 0 | train$y == 1)
+df <- train$x[index,]
+df.y <- train$y[index]
+df <- as.data.frame(df)
+df$y <- df.y
+var(df[,269])
+model.3 <- glm(y ~ V269, data = df, family = binomial)
+summary(model.3)
+df$pred <- predict(model.3, type = "response")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "V269")
+abline(v = 0.9)
+p = .6616
+mytable = table(df$y , df$pred > p)
+x = c(mytable[2,2]/sum(mytable[2,]), mytable[1,2]/sum(mytable[1,]))
+names(x) <- c("trueP", "falseP")
+x
+p = .6617
+mytable = table(df$y , df$pred > p)
+x = c(mytable[2,2]/sum(mytable[2,]), mytable[1,2]/sum(mytable[1,]))
+names(x) <- c("trueP", "falseP")
+x
+```
+
+Variable is Pixel No. 269  
+
+Logistic regression equation:
+$$\text{P\{y\}}=\frac{e^{\hat\beta_0+\hat\beta_1V_{269}}}{1+e^{\hat\beta_0+\hat\beta_1V_{269}}}=\frac{e^{-0.420932+0.004315V_{269}}}{1+e^{-0.420932+0.004315V_{269}}}$$
+
+When the fraction of false positives is 0.1,
+$$\frac{0.1-0.04761101}{0.1708594-0.04761101}\times(0.2963512-0.11391279)+0.11391279=0.1914616$$
+
+the fraction of true positives is approximately $0.19$
+
+## Problem 2
+
+```{r}
+var(df[,431])
+var(df[,547])
+cor(df[,431], df[,547])
+model.4 <- glm(y ~ V431 + V547, data = df, family = binomial)
+summary(model.4)
+df$pred <- predict(model.4, type = "response")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "V431+V547")
+auc(df$y, df$pred)
+plot(df$V431[df$y == 0], df$V547[df$y == 0], col = "dimgrey", xlab = "V431", ylab = "V547")
+points(df$V431[df$y == 1], df$V547[df$y == 1], col = "wheat")
+```
+
+Classifier ssing Pixel No.431 and No.547 is good. From the scatterplot, major points at bottomleft are 1s and those at upperright are 0s. The training accuracy is 81.66%.
+
+## Problem 3
+
+```{r}
+variance <- c()
+index <- 1:784
+for (i in index){
+  variance <- c(variance, var(df[,i]))
+}
+df.var <- data.frame(index, variance)
+df.var <- df.var[order(-variance),]
+head(df.var, 10)
+model.5 <- glm(y ~ V351 + V352 + V379 + V380 + V407 + V434 + V435 + V462 + V463 + V490, data = df,
+               family = binomial)
+summary(model.5)
+df$pred <- predict(model.5, type = "response")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "10 with the Largest Variances")
+auc(myroc)
+```
+
+The new ROC curve performs better than previous one. The training accuracy is 99.77%.

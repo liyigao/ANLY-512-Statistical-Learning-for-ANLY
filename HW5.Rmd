@@ -1,0 +1,162 @@
+---
+title: "HW5"
+author: "Yigao Li"
+date: "February 23, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Feed Forward
+
+## (a)
+
+(See Figure 1.)  
+
+![Diagram of given neural network architecture](D:/Courses/ANLY 512/hw5-1-a.png)
+
+## (b)
+
+$$h_1=tanh(1.2+4.2x_1-0.5x_2)$$
+
+## (c)
+
+$$z=tanh(5-8h_1+1.5h_2)$$
+
+## (d)
+
+$$\begin{aligned}
+z&=tanh(5-8h_1+1.5h_2)\\
+&=tanh(5-8tanh(1.2+4.2x_1-0.5x_2)+1.5tanh(-30+20x_1-40x_2))
+\end{aligned}$$
+
+# 2. Multiple Solutions
+
+Matrix of weights from input to hidden layer was $B=\begin{pmatrix}0&&5&&0\\0&&0&&7\end{pmatrix}$, $w=\begin{pmatrix}-5\\4\\6\end{pmatrix}$
+
+Similar sets of weights lead to the same output:  
+1. $B=\begin{pmatrix}0&&-5&&0\\0&&0&&7\end{pmatrix}$, $w=\begin{pmatrix}-5\\-4\\6\end{pmatrix}$  
+2. $B=\begin{pmatrix}0&&5&&0\\0&&0&&-7\end{pmatrix}$, $w=\begin{pmatrix}-5\\4\\-6\end{pmatrix}$  
+3. $B=\begin{pmatrix}0&&-5&&0\\0&&0&&-7\end{pmatrix}$, $w=\begin{pmatrix}-5\\-4\\-6\end{pmatrix}$  
+Assume that $g(y)=tanh(y)$, $g$ is an odd function. Output $z=tanh(-5+4tanh5x_1+6tanh5x_2)$. Switching signs of coefficients of $x_1$ and $h_1$ does not change final output, similar to $x_2$ and $h_2$:
+$$\begin{aligned}
+z&=tanh(-5+4tanh5x_1+6tanh5x_2)\\
+&=tanh(-5-4tanh(-5x_1)-6tanh(-5x_2))\\
+&=tanh(-5-4tanh(-5x_1)+6tanh5x_2)\\
+&=tanh(-5+4tanh5x_1-6tanh(-5x_2))
+\end{aligned}$$
+
+# 3. ANNs and Multiple Linear Regression
+
+## (a)
+
+```{r}
+library(nnet)
+set.seed(1234)
+Advertising <- read.csv("Advertising.csv")
+lin.model <- lm(Sales ~ TV + Radio + Newspaper, data = Advertising)
+summary(lin.model)
+nnet.model <- nnet(Sales ~ TV + Radio + Newspaper, data = Advertising, size = 0, linout = TRUE,
+                   skip = TRUE)
+summary(nnet.model)
+sum(residuals(lin.model)^2)
+sum(residuals(nnet.model)^2)
+```
+
+Sum of squared errors are exactly the same for both methods.
+
+## (b)
+
+```{r}
+Advert2 <- as.data.frame(scale(Advertising))
+head(Advertising)
+head(Advert2)
+newAd <- Advert2
+newAd$Sales <- Advertising$Sales
+head(newAd)
+```
+
+All data are converted to gaussian scaled values.
+
+## (c)
+
+```{r}
+lin.model.scale <- lm(Sales ~ TV + Radio + Newspaper, data = newAd)
+summary(lin.model.scale)
+sum(residuals(lin.model.scale)^2)
+```
+
+# 4. MNIST Revisited
+
+## (a)
+
+```{r}
+load("mnist_all.RData")
+library(pROC)
+```
+
+```{r}
+index <- (train$y == 4 | train$y == 7)
+df <- train$x[index,]
+df.y <- train$y[index]
+df <- as.data.frame(df)
+df$y <- (df.y-4)/3  # 0 for number 4;   1 for number 7
+a <- 711
+b <- 298
+var(df[,a])
+var(df[,b])
+cor(df[,a], df[,b])
+model.1 <- glm(y ~ V711 + V298, data = df, family = binomial)
+summary(model.1)
+df$pred <- predict(model.1, type = "response")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "Logistic V711+V298")
+auc(df$y, df$pred)
+```
+
+## (b)
+
+```{r}
+set.seed(1)
+model.2 <- nnet(y ~ V711 + V298, data = df, size = 1)
+summary(model.2)
+df$pred <- predict(model.2, type = "raw")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "Neural Network V711 + V298")
+auc(df$y, df$pred)
+```
+
+Results from ANN slightly improves from logistic regression by 1.2% of training accuracy. 2 plots indicate that true positive rate is higher for ANN method with low  false positive rate.
+
+## (c)
+
+```{r}
+set.seed(2)
+
+model.3 <- nnet(y ~ V711 + V298, data = df, size = 2)
+summary(model.3)
+df$pred <- predict(model.3, type = "raw")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "Neural Network V711 + V298 (2 units in hidden layer)")
+auc(df$y, df$pred)
+
+model.4 <- nnet(y ~ V711 + V298, data = df, size = 4)
+summary(model.4)
+df$pred <- predict(model.4, type = "raw")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "Neural Network V711 + V298 (4 units in hidden layer)")
+auc(df$y, df$pred)
+
+model.5 <- nnet(y ~ V711 + V298, data = df, size = 6)
+summary(model.5)
+df$pred <- predict(model.5, type = "raw")
+myroc <- roc(df$y, df$pred)
+plot(myroc, main = "Neural Network V711 + V298 (6 units in hidden layer)")
+auc(df$y, df$pred)
+```
+
+The results did not improve. It is overfitting.

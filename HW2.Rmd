@@ -1,0 +1,239 @@
+---
+title: "HW2"
+author: "Yigao Li"
+date: "February 1, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 3.7 - 4
+
+## (a)
+
+Residual Sum of Squares (RSS) for cubic regression must be less than linear regression because of least squares method while creating regression models.
+
+## (b)
+
+However, when dealing with test data, RSS for cubic regression can be larger than linear one since the true relationship between *X* and *Y* is linear.
+
+## (c)
+
+RSS for cubic regression should be less than linear regression because higher order polynomial has more flexibility.
+
+## (d)
+
+There is not enough information to tell which one has a smaller RSS because we don't know the real relationship between *X* and *Y*.
+
+# 3.7 - 9
+
+## (a)
+
+```{r}
+library(ISLR)
+library(car)
+auto <- Auto
+scatterplotMatrix(auto)
+```
+
+## (b)
+
+```{r}
+auto.cor <- subset(auto, select = -name)
+cor(auto.cor)
+```
+
+## (c)
+
+```{r}
+model.1 <- lm(mpg ~ ., data = auto.cor)
+summary(model.1)
+```
+
+### i.
+
+There is a relationship between mpg and other variables because the F statistics is large.
+
+### ii.
+
+"displacement", "weight", "year", "origin" have statistically significant relationship to "mpg"
+
+### iii.
+
+Keep other variables unchanged, the estimated mpg of a car increases 0.750773 every year.
+
+# 3.7 - 12
+
+## (a)
+
+Let $y_i=\hat\beta x_i$ and $x_i=\hat\alpha y_i$. $\hat\beta=\frac{\sum x_iy_i}{\sum x_i^2}$, $\hat\alpha=\frac{\sum x_iy_i}{\sum y_i^2}$.  
+Therefore, to make $\hat\beta=\hat\alpha$, $\sum x_i^2=\sum y_i^2$
+
+## (b)
+
+```{r}
+n <- 100
+x <- sort(runif(100,0,10))   # x is random number from 0 to 5
+y1 <- rnorm(n, x/2, 1)      # The true relation is y=2
+plot(x,y1, ylim = c(0,10))
+model.2 <- lm(y1~x-1)       # Y to X
+summary(model.2)            # coefficient is approximately 2
+model.3 <- lm(x~y1-1)       # X to Y
+summary(model.3)            # coefficient is approximately 0.5
+```
+
+## (c)
+
+```{r}
+y2 <- rnorm(n, x, 1)
+plot(x,y2)
+model.4 <- lm(y2~x-1)
+summary(model.4)
+model.5 <- lm(x~y2-1)
+summary(model.5)
+```
+
+# 3.7 - 13
+
+```{r}
+set.seed(1)
+```
+
+## (a)
+
+```{r}
+x <- rnorm(100)
+```
+
+## (b)
+
+```{r}
+eps <- rnorm(100, 0, sqrt(0.25))
+```
+
+## (c)
+
+```{r}
+y <- -1 + x/2 + eps
+```
+
+The length of *y* is 100. $\beta_0=-1$. $\beta_1=0.5$
+
+## (d)
+
+```{r}
+plot(x,y)
+```
+
+*x* and *y* show positive linear relation.
+
+## (e)
+
+```{r}
+model.6 <- lm(y~x)
+summary(model.6)
+```
+
+$\hat\beta_0=-1.00478$, $\hat\beta_1=0.44156$. The estimated $\hat\beta$ values are approximately the same with real $\beta$ value.
+
+## (f)
+
+```{r}
+plot(x,y)
+abline(model.6)
+legend("topleft", legend = "Regression Line", lty = 1)
+```
+
+## (g)
+
+```{r}
+model.7 <- lm(y~x+I(x^2))
+summary(model.7)
+```
+
+Although this polynomial regression model is also significant due to large F statistics, the p-value of coefficient of $X^2$ term is 0.589, meaning that adding quadratic term does not improve the model. Furthermore, adjusted R-squared is less than multiple R-squared, which also explains why we should not add $x^2$ term.
+
+## (h)
+
+```{r}
+eps.1 <- rnorm(100, 0, 0.1)
+y.1 <- -1 + x/2 + eps.1
+model.8 <- lm(y.1~x)
+summary(model.8)
+plot(x,y.1)
+abline(model.8)
+legend("topleft", legend = "Regression Line", lty = 1)
+```
+
+Variance of *eps* decreases to 0.01. The regression line is approximately the same but the new model has higher Multiple R-squared.
+
+## (i)
+
+```{r}
+eps.2 <- rnorm(100, 0, 1)
+y.2 <- -1 + x/2 + eps.2
+model.9 <- lm(y.2~x)
+summary(model.9)
+plot(x,y.2)
+abline(model.9)
+legend("topleft", legend = "Regression Line", lty = 1)
+```
+
+Variance of error increases to 1. The coefficient of term *x* moves away from 0.5 due to more noise. 
+
+## (j)
+
+```{r}
+print("95% confidence interval of coefficients in original data")
+confint(model.6)
+print("95% confidence interval of coefficients in less noise data")
+confint(model.8)
+print("95% confidence interval of coefficients in more noise data")
+confint(model.9)
+```
+
+If data points separate away from each other, confidence intervals of coefficients will have wider ranges.
+
+# 3.7 - 15
+
+## (a)
+
+```{r}
+library(MASS)
+boston <- Boston
+x <- c()
+for (predictor in names(boston)[-1]){
+  simple.model <- paste("crim ~", predictor, sep = " ")
+  column <- paste("boston$", predictor, sep = "")
+  model.10 <- lm(simple.model, data = boston)
+  x <- c(x, as.numeric(coef(model.10)[2]))
+  print(summary(model.10))
+}
+for (i in 2:14){
+  plot(boston[,c(1,i)])
+}
+```
+
+Among all the predictors, "zn", "indus", "nox", "rm", "age", "dis", "rad", "tax", "ptratio", "black", "lstat", "medv" are statistically significantly associated with per capita crime rate.
+
+## (b)
+
+```{r}
+model.11 <- lm(crim ~ ., data = boston)
+summary(model.11)
+```
+
+Since p-values of "zn", "dis", "rad", "black" and "medv" are less than 0.05, we can reject the null hypothesis that coefficients of these parameters are 0.
+
+## (c)
+
+```{r}
+y <- as.numeric(coef(model.11)[2:length(coef(model.11))])
+plot(x,y)
+```
+
+Coefficient of "nox" is 31.249 in simple regression but -10.313535 in multiple regression.

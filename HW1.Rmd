@@ -1,0 +1,286 @@
+---
+title: "HW1"
+author: "Yigao Li"
+date: "January 28, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 2.4 - 4
+
+## (a)
+
+1. Museums want to know about their visitors including their attitudes, preferences, experiences and etc. Predictors could be visiting purpose, previous knowledge about exhibitions, visitor's companions (friends, family or individuals), job backgrounds and so on. Response would be whether they will come back visit museum again. The goal is inference because it is discussing a future event.  
+
+2. Object detection. Response is the object itself and predictors are features of objects and pixels in pictures. The goal is prediction because computers recognize objects.  
+
+3. Predicting whether a person will fail to pay his loan. Response is either success or failure. Predictors can be many factors such as income, martial status, age, social credits and so on. The goal, apparently, is prediction since we are predicting a person's credit of paying loan.  
+
+## (b)
+
+1. New-born baby weight. Response is baby's weight, and predictors are mostly related to mothers: smoke and alcohol history, mother's weight and age, boy or girl, gestation period and many others. The goal is prediction, we are predicting new-born baby weights.  
+
+2. Stock price prediction. Response is stock price change in a certain day. Predictors can be company's headline news, stock index behavior and industry trend. The goal is prediction because we do not know how the price will change before any further information.  
+
+3. Sports game results. This is interesting for people who gamble in sport games. Responses can be final result, scores, score differences, first event occurance and so on. Predictors are factors that can be used from game history of teams on both sides. The goal is also prediction.  
+
+## (c)
+
+1. Shoppers preference. Data are items in their shopping bags.  
+
+2. Museum visitors. Cluster audience into groups and discover what people like to see in their museums.  
+
+3. Product quality. Group products based on quality with various factors. Furthermore, retailers are able to set prices for different groups to expand sales.  
+
+# 2.4 - 7
+
+## (a)
+
+```{r}
+x1 <- c(0, 2, 0, 0, -1, 1)
+x2 <- c(3, 0, 1, 1, 0, 1)
+x3 <- c(0, 0, 3, 2, 1, 1)
+y <- c("Red", "Red", "Red", "Green", "Green", "Red")
+data <- data.frame(x1, x2, x3, y)
+for (i in 1:6){
+  obs <- c(data$x1[i], data$x2[i], data$x3[i])
+  cat("Euclidean distance between observation", i, "and the test point is",
+      dist(rbind(obs, c(0,0,0))), "\n")
+}
+```
+
+## (b)
+
+If $k=1$, since point $(0,0,0)$ is closest to observation 5 which is green, prediction for $X_1=X_2=X_3=0$ is Green as well.
+
+## (c)
+
+If $k=3$, since 3 closest observations from $(0,0,0)$ is 2, 5 and 6, in which 2 of them are red and 1 is green, prediction for $X_1=X_2=X_3=0$ is Red.
+
+## (d)
+
+Because Bayes decision boundary is non-linear, we would expect $K$ to be small because small $K$ means more flexible and the boundary will be less linear.
+
+# 2.4 - 9
+
+```{r}
+library(ISLR)
+auto <- Auto
+auto <- auto[complete.cases(auto),]
+```
+
+## (a)
+
+"mpg", "cylinders", "displacement", "horsepower", "weight", "acceleration", "year" are quantitative.  
+"origin" is qualitative.
+
+## (b)
+
+```{r, echo = FALSE}
+print("mpg")
+range(auto$mpg)
+print("cylinders")
+range(auto$cylinders)
+print("displacement")
+range(auto$displacement)
+print("horsepower")
+range(auto$horsepower)
+print("weight")
+range(auto$weight)
+print("acceleration")
+range(auto$acceleration)
+print("year")
+range(auto$year)
+```
+
+## (c)
+
+```{r, echo = FALSE}
+print("mpg")
+print("mean")
+mean(auto$mpg)
+print("standard deviation")
+sd(auto$mpg)
+print("cylinders")
+print("mean")
+mean(auto$cylinders)
+print("standard deviation")
+sd(auto$cylinders)
+print("displacement")
+print("mean")
+mean(auto$displacement)
+print("standard deviation")
+sd(auto$displacement)
+print("horsepower")
+print("mean")
+mean(auto$horsepower)
+print("standard deviation")
+sd(auto$horsepower)
+print("weight")
+print("mean")
+mean(auto$weight)
+print("standard deviation")
+sd(auto$weight)
+print("acceleration")
+print("mean")
+mean(auto$acceleration)
+print("standard deviation")
+sd(auto$acceleration)
+print("year")
+print("mean")
+mean(auto$year)
+print("standard deviation")
+sd(auto$year)
+```
+
+## (d)
+
+```{r, echo = FALSE}
+auto.new <- auto[-10:-85,]
+print("mpg")
+print("range")
+range(auto.new$mpg)
+print("mean")
+mean(auto.new$mpg)
+print("standard deviation")
+sd(auto.new$mpg)
+print("cylinders")
+print("range")
+range(auto.new$cylinders)
+print("mean")
+mean(auto.new$cylinders)
+print("standard deviation")
+sd(auto.new$cylinders)
+print("displacement")
+print("range")
+range(auto.new$displacement)
+print("mean")
+mean(auto.new$displacement)
+print("standard deviation")
+sd(auto.new$displacement)
+print("horsepower")
+print("range")
+range(auto.new$horsepower)
+print("mean")
+mean(auto.new$horsepower)
+print("standard deviation")
+sd(auto.new$horsepower)
+print("weight")
+print("range")
+range(auto.new$weight)
+print("mean")
+mean(auto.new$weight)
+print("standard deviation")
+sd(auto.new$weight)
+print("acceleration")
+print("range")
+range(auto.new$acceleration)
+print("mean")
+mean(auto.new$acceleration)
+print("standard deviation")
+sd(auto.new$acceleration)
+print("year")
+print("range")
+range(auto.new$year)
+print("mean")
+mean(auto.new$year)
+print("standard deviation")
+sd(auto.new$year)
+```
+
+## (e)
+
+```{r}
+library(car)
+scatterplotMatrix(~mpg+cylinders+displacement+horsepower+weight+acceleration+year, data = auto)
+```
+
+From the scatter matrix above, we can see there are some obvious linear relations between some predictors such as:  
+(mpg, cylinders),  
+(mpg, displacement),  
+(mpg, horsepower),  
+(mpg, weight),  
+(mpg, year),  
+(cylinders, displacment),  
+(cylinders, weight),  
+(displacement, horsepower),  
+(displacement, acceleration),  
+(horsepower, weight),  
+(horsepower, acceleration),  
+(horsepower, year),  
+(weight, acceleration),  
+(acceleration, year).
+
+## (f)
+
+From last part, mpg has linear relations with cylinders, displacement, horsepower, weight and year.
+
+```{r}
+model.1 <- lm(mpg ~ cylinders + displacement + horsepower + weight + year, data = auto)
+summary(model.1)
+```
+
+Summary of above linear model suggests that these variables are useful in predicting mpg because its F-statistics is large.
+
+# Exploration of the Bias-Variance Tradeoff
+
+## (a)
+
+10 simulations with degree = 1. Residual SSEs are:
+128.77  
+49.87  
+102.12  
+55.36  
+99.86  
+76.22  
+151.02  
+123.05  
+78.25  
+89.27  
+Average residual SSE is 95.379  
+Approximate range of the highest order coefficient is from -3 to -6  
+
+## (b)
+
+10 simulations with degree = 3. Residual SSEs are:  
+33.93  
+55.58  
+65.92  
+56.21  
+66.87  
+45.95  
+54.35  
+75.04  
+68.7  
+38.64  
+Average residual SSE is 56.119  
+The largest range of coefficient is of order 1. Range approximately from -5 to 9.
+
+## (c)
+
+10 simulations with degree = 15. Residual SSEs are:  
+11.33  
+3.01  
+0.16  
+29.23  
+31.68  
+2.29  
+6.97  
+26.76  
+33.05  
+12.13  
+Average residual SSE is 15.661
+The largest range of coefficient is of order 6. Range approximately from $-10^5$ to $8\times10^5$.
+
+## (d)
+
+Simulation results in previous parts illustrate the fact of bias-variance trade-off. When we are increasing model complexity, model curve is more flexible and model residual sum of squared error gets smaller. But at the same time, coefficients of polynomials are larger and less stable. They can range extremely wide.
+
+## (e)
+
+I would choose to use model complexity 2. From the plot, the true curve seems to be a concave parabola. $2^{nd}$ order polynomial model is the most appropriate to estimate. Furthermore, for most of the time, when I choose model complexity to be 3, coefficient of $3^{rd}$ order is very small, close to 0. Thus, I believe that $3^{rd}$ order term is not necessary in this model.

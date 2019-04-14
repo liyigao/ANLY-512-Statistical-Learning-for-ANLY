@@ -1,0 +1,131 @@
+---
+title: "HW9"
+author: "Yigao Li"
+date: "April 15, 2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Dermatology
+
+## Data Cleaning
+
+```{r}
+set.seed(1)
+library(tree)
+library(randomForest)
+derm <- read.table("https://archive.ics.uci.edu/ml/machine-learning-databases/dermatology/dermatology.data",
+                   sep = ',')
+derm$V35 <- as.factor(derm$V35)
+derm <- derm[!derm$V34 == '?',]
+derm$V34 <- as.numeric(derm$V34)
+n <- dim(derm)[1]
+train <- sample(n, round(n*0.7))
+test <- -train
+derm.train <- derm[train,]
+derm.test <- derm[test,]
+```
+
+This dataset is about erythemato-squamous disease in dermatology. It has 34 attributes, in which 33 are linear and 1 is nominal, and 1 class response. Response has 6 classes. The "Age" attribute has 8 missing values. After removing them, the dataset contains 358 observations, and 70% of them are randomly sampled to be training dataset. The rest of the data is for testing use. The goal is to predict type of disease from other 34 variables, and eventually to find the best few variables to predict skin disease. 
+
+## Decision Tree
+
+```{r}
+derm.tree <- tree(V35 ~ ., data = derm.train)
+plot(derm.tree)
+text(derm.tree, pretty = 0)
+tree.pred <- predict(derm.tree, derm.test, type = 'class')
+table(derm.test$V35, tree.pred)
+```
+
+We generate a decision tree considering all other 34 possible variables. The tree uses "*clubbing of the rete ridges*", "*follicular papules*", "*band-like infiltrate*", "*fibrosis of the papillary dermis*", "*fibrosis of the papillary dermis*", "*perifollicular parakeratosis*", "*koebner phenomenon*" and "*disappearance of the granular layer*". Overall, this tree has 5 out of 107 errors when performing decision tree to test data. The test error rate is appoximately $4.6729\%$.
+
+## Bagging
+
+```{r}
+set.seed(5)
+derm.bag <- randomForest(V35 ~ ., data = derm.train, mtry = 34, importance = TRUE)
+derm.bag
+bag.pred <- predict(derm.bag, derm.test)
+table(derm.test$V35, bag.pred)
+```
+
+Here we apply bagging to dermotology dataset. We perform bagging where all 34 predictors are tried at each split. The training error rate is $3.59\%$ and the test error rate is 6 out of 107, approximately $5.6\%$, which is a little worse than our previous decision tree.
+
+Interesting thing to note that decision tree and bagging both mistakenly predict 3 **psoriasis** cases as **seboreic dermatitis**.
+
+## Random Forest
+
+```{r}
+set.seed(8)
+derm.rf <- randomForest(V35 ~ ., data = derm.train, mtry = 6, importance = TRUE)
+derm.rf
+rf.pred <- predict(derm.rf, derm.test)
+table(derm.test$V35, rf.pred)
+```
+
+Finally we apply random forest to our data, comparing to bagging, here we only use $6\approx\sqrt{34}$ variables at each split. The training error rate is $2.39\%$ and random forest only makes one mistake when applying to testing dataset, and the corresponding error rate is $\approx0.93458\%$, which is a much better result with respect to decision tree and bagging.
+
+## Variable Importance
+
+```{r}
+importance(derm.rf)
+varImpPlot(derm.rf)
+```
+
+According to results from `importance()` and `varImpPlot()` applying to our random forest model, the 5 most important variables to predict skin diseases are *koebner phenomenon*, *fibrosis of the papillary dermis*, *clubbing of the rete ridges*, *elongation of the rete ridges* and *spongiosis*.
+
+
+## Conclusion
+
+In conclusion, random forest is the best method for skin diseases classification. According to our testing results, it has only less than $1\%$ error. After exploring more in depth, we find out that *koebner phenomenon*, *fibrosis of the papillary dermis*, *clubbing of the rete ridges*, *elongation of the rete ridges* and *spongiosis* are the 5 most important factors that help to determine the type of skin disease.
+
+# Classification Problem
+
+```{r}
+load("ex0408.rData")
+library(gbm)
+```
+
+## Random Forest
+
+```{r}
+set.seed(7)
+mytree<- randomForest(z ~ ., data = mydf.train, mtry = 3, ntree = 400)
+mytree
+mytree.train.pred <- predict(mytree, mydf.train)
+table(mydf.test$z, mytree.train.pred)
+mytree.test.pred <- predict(mytree, mydf.test)
+table(mydf.test$z, mytree.test.pred)
+```
+
+The training error rate is $42.81\%$ and the test error rate is $24.32\%$ calculated from the confusion matrices. These error rates hugely vary.
+
+## Boosting
+
+```{r}
+mydf.train$z <- as.numeric(mydf.train$z)-1
+set.seed(7)
+mydepth = 2
+mysteps = 300
+myshrink = .1
+myboost = gbm(z ~ ., data = mydf.train, distribution="bernoulli", n.trees = mysteps,
+              interaction.depth = mydepth, shrinkage = myshrink)
+myboost.train.prob <- predict(myboost, mydf.train, n.trees = mysteps, type = "response")
+myboost.train.pred <- rep(FALSE, length(myboost.train.prob))
+myboost.train.pred[myboost.train.prob > 0.5] <- TRUE
+table(mydf.train$z, myboost.train.pred)
+myboost.test.prob <- predict(myboost, mydf.test, n.trees = mysteps, type = "response")
+myboost.test.pred <- rep(FALSE, length(myboost.test.prob))
+myboost.test.pred[myboost.test.prob > 0.5] <- TRUE
+table(mydf.test$z, myboost.test.pred)
+```
+
+Boosting training error rate is $22.41\%$ and test error rate is $24.07\%$. Comparing to random forest, training and test error are close to each other.
+
+The reason that boosting performs better on training dataset is due to the data. According to dataset background, the `z` response column is determined by whether other numbers divide the first number. Random forest grows a full decision tree with more tree levels. However, it is impossible to split classifications based on numeric values. For example, 128 divides 8, but both 127 and 129 cannot divide 8. In this case, boosting can do better due to weak classifiers and its high bias. Boosting increases accuracy by reducing bias.
